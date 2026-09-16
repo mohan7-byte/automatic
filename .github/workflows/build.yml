@@ -14,10 +14,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Show build tools
-        run: |
-          java -version
-          gradle --version
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
       - name: Build debug APK
         id: build
         continue-on-error: true
