@@ -4,4 +4,4 @@
     android:notificationTimeout="50"
     android:canRetrieveWindowContent="false"
     android:canRequestFilterKeyEvents="true"
-    android:description="Headless physical-button automation for a broken-screen phone." />
+    android:description="@string/accessibility_description" />
