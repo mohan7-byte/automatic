@@ -13,6 +13,7 @@
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BODY_SENSORS" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
 
     <application android:theme="@style/AppTheme" android:label="Automatic" android:allowBackup="false" android:supportsRtl="true">
