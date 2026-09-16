@@ -14,11 +14,10 @@ public class AutomationService extends Service implements SensorEventListener {
     private final Runnable tick = new Runnable(){ public void run(){ runScheduleAndBattery(); if(h!=null) h.postDelayed(this,30000); }};
 
     @Override public void onCreate(){
-        super.onCreate();
-        h=new Handler(Looper.getMainLooper());
+        super.onCreate(); h=new Handler(Looper.getMainLooper());
         startForeground(7,notification("Automatic running (screen stays off)"));
         sm=(SensorManager)getSystemService(SENSOR_SERVICE);
-        if(sm!=null){ Sensor s=sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER); if(s!=null) sm.registerListener(this,s,SensorManager.SENSOR_DELAY_NORMAL); }
+        if(sm!=null){ Sensor s=sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER); if(s!=null)sm.registerListener(this,s,SensorManager.SENSOR_DELAY_NORMAL); }
         h.post(tick);
     }
 
@@ -39,11 +38,16 @@ public class AutomationService extends Service implements SensorEventListener {
         if(now.equals(p.morning())){ SystemControl.setHotspot(this,true); SystemControl.setMobileData(this,true); }
 
         int pct=SystemControl.battery(this); int[] marks={15,10,5,2};
-        for(int m:marks) if(pct==m&&!p.batterySent(m)){
-            sms(p.commandNumber(),"⚠️ Redmi 8A Alert: Battery at "+m+"%. Hotspot is still running.");
-            p.markBatterySent(m);
+        if(pct>=0){
+            for(int m:marks){
+                if(pct<=m&&!p.batterySent(m)){
+                    boolean hs=SystemControl.isHotspotOn(this);
+                    sms(p.myNumber(),"⚠️ Redmi 8A Alert: Battery at "+pct+"% (threshold "+m+"). Hotspot: "+(hs?"ON":"OFF")+".");
+                    p.markBatterySent(m);
+                }
+            }
+            if(pct>=30) p.clearBatterySent();
         }
-        if(pct>=30) p.clearBatterySent();
     }
 
     static void sms(String to,String body){ if(to==null||to.trim().isEmpty())return; try{ SmsManager.getDefault().sendTextMessage(to,null,body,null,null); }catch(Exception ignored){} }
@@ -71,17 +75,13 @@ public class AutomationService extends Service implements SensorEventListener {
         } else if("dad".equals(a)){ SystemControl.call(this,p.dad()); return;
         } else if("callme".equals(a)){ SystemControl.call(this,p.myNumber()); return;
         } else if("status".equals(a)){
-            int b=SystemControl.battery(this);
-            boolean hs=SystemControl.isHotspotOn(this), ds=SystemControl.isMobileDataOn(this);
+            int b=SystemControl.battery(this); boolean hs=SystemControl.isHotspotOn(this), ds=SystemControl.isMobileDataOn(this);
             sms(reply,"Redmi 8A: Battery "+b+"% | Hotspot: "+(hs?"ON":"OFF")+" | Data: "+(ds?"ON":"OFF")+" | Schedule: "+p.night()+" - "+p.morning());
             return;
         }
         android.os.Vibrator v=(android.os.Vibrator)getSystemService(VIBRATOR_SERVICE);
-        if(a.startsWith("hotspot")){
-            SystemControl.vibrate(v, result.equals("ON")?new long[]{0,700}:new long[]{0,120,120,120});
-        } else if(a.startsWith("data")){
-            SystemControl.vibrate(v,new long[]{0,120});
-        }
+        if(a.startsWith("hotspot")) SystemControl.vibrate(v,result.equals("ON")?new long[]{0,700}:new long[]{0,120,120,120});
+        else if(a.startsWith("data")) SystemControl.vibrate(v,new long[]{0,120});
         if(reply!=null) sms(reply,"Automatic: "+a+" "+result);
     }
 
