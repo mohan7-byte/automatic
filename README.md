@@ -15,27 +15,32 @@ The app is **strictly headless after setup**. It does not wake the display to pe
 - SMS remote commands from one authorized number
 - Battery SMS alerts at 15%, 10%, 5%, and 2%; alerts do **not** switch anything off
 
-## Why this version uses privileged/legacy methods
-MacroDroid documents that its Universal Helper is used on Android 13 and below specifically because Android gradually restricted direct connectivity control. For Xiaomi devices running Android 11 or lower, MacroDroid says the Universal Helper should work without the newer Xiaomi connectivity helper. Its mobile-data action requires the ADB-hack/privileged route, and its hotspot action uses private/legacy mechanisms with alternative methods. citeturn311728search0turn760946search1turn760946search4
+## Connectivity control strategy
+MacroDroid documents that its Universal Helper is used on Android 13 and below because older-target applications can retain access to restricted connectivity operations. For Xiaomi devices on Android 11 or lower, MacroDroid says the Universal Helper should work; its mobile-data action uses the ADB-hack/privileged route, and its hotspot action uses private/legacy mechanisms. citeturn381909search0turn381909search6turn381909search11
 
-This app therefore uses the same **class of strategy** rather than pretending an ordinary `WifiManager`/`TelephonyManager` call is enough:
+Automatic uses the same class of approach:
 
-1. Try privileged shell commands (`cmd connectivity tether ...`, `cmd phone data ...`, `svc data ...`) when the device exposes a shell/root/Shizuku-equivalent execution path.
-2. Try legacy/private Android connectivity APIs available to the old-target build.
-3. Try the privileged Settings database fallback when `WRITE_SETTINGS` is actually granted.
-4. Read back the state before reporting success.
+1. **Shizuku shell/ADB identity** — runs `cmd phone data enable/disable`, `svc data enable/disable`, and `cmd connectivity tether start/stop wifi` as shell/root when Shizuku is available. Shizuku's API is specifically designed to let normal apps execute with ADB/root identity; on non-rooted Android 10 it must be started with ADB and restarted after reboot. citeturn312941search1turn312941search0
+2. **Root/SU path** — tries the same commands through `su` when the phone is rooted.
+3. **Legacy Android 10 private API** — invokes the hidden `WifiManager.setWifiApEnabled` path from an API-28-targeted build, matching the old-target-helper technique documented by MacroDroid. citeturn381909search0turn381909search11
+4. **ADB-granted settings fallback** — uses the system settings database when the user has explicitly granted the special settings access.
+5. **Read-back verification** — hotspot/data state is queried before the app reports ON/OFF success.
 
-Android 10 itself restricts public connectivity APIs, and `setWifiApEnabled()` is hidden/deprecated; the framework tethering APIs are privileged. citeturn760946search5turn581602search0turn229204search0
+## One-time setup through scrcpy
+1. Install the APK on the Redmi 8A.
+2. Install and start **Shizuku** on the phone. On Android 10, start Shizuku from your PC with ADB; Shizuku documents that Android versions before 11 require a computer for this startup and that non-root Shizuku must be restarted after each reboot. citeturn312941search1
+3. Open Automatic → **Grant ADB shell control (Shizuku)** and approve Automatic in Shizuku.
+4. Grant SMS/call/notification/vibration permissions.
+5. Enable **Automatic** in Accessibility so hardware volume keys are captured without touch.
+6. Grant **Allow system settings access**.
+7. Optionally grant the development-only secure-settings permission from the PC:
+   `adb shell pm grant com.mohan7.automatic android.permission.WRITE_SECURE_SETTINGS`
+8. Disable MIUI battery optimization for Automatic and enable Auto-start.
+9. Configure Dad's number, your other number, authorized SMS number, night time, morning time, and shake mode.
+10. After setup, keep the physical display off. Verify the volume, shake, schedule and SMS paths with the display off.
 
-## One-time setup
-1. Install the debug/release APK on the Redmi 8A and use scrcpy while setting it up.
-2. Grant SMS, call, notification and vibration permissions.
-3. Enable the **Automatic** accessibility service so volume-key events are captured without touching the display.
-4. In Automatic, enter Dad's number, your other number, authorized SMS number, night time and morning time.
-5. Grant **Allow system settings access** from the app's setup screen. This is a special access, not the same as a normal runtime permission.
-6. Disable MIUI battery optimization for Automatic and enable Auto-start.
-7. If using an ADB/Shizuku/root execution path on this personal device, enable that execution path as described by your chosen tool. The app automatically attempts the privileged shell commands first.
-8. After setup, keep the physical display off. Verify the volume, shake, schedule and SMS paths with the display off.
+### Shizuku startup on Redmi 8A / Android 10
+Connect the phone over USB with ADB debugging enabled, then start Shizuku using the current startup instructions shown by the Shizuku app. Do **not** rely on an old wireless-debugging-only procedure: Android 10 does not have the Android 11+ built-in wireless debugging flow. LADB's Android 10 documentation also describes the older `adb tcpip 5555` approach as a temporary alternative that must be repeated after reboot. citeturn312941search1turn381909search4
 
 ## SMS commands
 Only the configured authorized SMS sender is accepted:
@@ -52,7 +57,7 @@ Only the configured authorized SMS sender is accepted:
 Remote commands return a small SMS result. `status` reads the current hotspot/data state rather than relying on an in-memory guess.
 
 ## Battery alerts
-At **15%, 10%, 5%, and 2%**, the app silently sends the configured warning SMS. It does not automatically shut down hotspot or mobile data.
+At **15%, 10%, 5%, and 2%**, the app silently sends the warning SMS to your configured **other number**. It does not automatically shut down hotspot or mobile data.
 
 ## Haptics
 - Hotspot ON → 1 long vibration
@@ -65,4 +70,5 @@ At **15%, 10%, 5%, and 2%**, the app silently sends the configured warning SMS. 
 - Native Java Android Views, no WebView
 - minSdk 26
 - targetSdk 28
+- version 1.1.0
 - intended for the Redmi 8A / Android 10 use case
